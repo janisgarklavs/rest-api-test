@@ -1,0 +1,4 @@
+{
+    "DBHost": "mongodb://localhost/myDevDB",
+    "secret": "thisisverysecretstring"
+}
