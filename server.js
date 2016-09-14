@@ -1,29 +1,58 @@
+/**
+ * REST Api server for test purposes
+ * @author Janis Garklavs
+ */
+
+/*
+* Package imports
+*/
 let express = require('express');
-let app = express();
-let mongoose = require('mongoose');
-mongoose.Promise = require('bluebird');
 let bodyParser = require('body-parser');
-
-let config = require('config');
-
-let options = {
-    server: { socketOptions: { keepAlive: 1, connectTimeoutMS: 30000} },
-    replset: { socketOptions: { keepAlive: 1, connectTimeoutMS: 30000} },
-};
-mongoose.connect(config.DBHost, options);
-let db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection: error:'));
+let jwt = require('jsonwebtoken');
+let mongoose = require('mongoose');
 let autoIncrement = require('mongoose-auto-increment');
+
+
+/*
+* Configuration block
+*/
+
+const DBHost = process.env.DBHOST || "mongodb://localhost/myDevDB";
+const port = process.env.PORT || 8080;
+const secret = process.env.SECRET || "mySecret";
+
+mongoose.Promise = require('bluebird');
+
+let app = express();
+app.set('secret', secret);
+app.use(bodyParser.json({ type: 'application/json'}));
+
+/*
+* Database connection
+*/
+mongoose.connect(DBHost);
+let db = mongoose.connection.on('error', console.error.bind(console, 'connection: error:'));
 autoIncrement.initialize(db);
 
+
+/*
+* Local imports
+*/
 let middlewares = require('./app/middlewares');
 let auth = require('./app/routes/auth');
 let users = require('./app/routes/users');
 
-const port = process.env.PORT || 8080;
+/*
+* Error handling middleware.
+*/
+app.use( (err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ success: false, message: "Something went wrong" });
+});
 
-app.use(bodyParser.json({ type: 'application/json'}));
-
+/*
+* Api routes
+*/
 app.route("/login")
     .post(auth.login);
 app.route("/users")
@@ -33,7 +62,10 @@ app.route("/users/:id")
     .get(middlewares.auth, users.getUser)
     .delete(middlewares.auth, users.deleteUser);
 
+/*
+* Starting the application
+*/
 app.listen(port);
-console.log("Listening on port "+ port);
+console.log("Starting rest api on port: "+ port);
 
 module.exports = app;
